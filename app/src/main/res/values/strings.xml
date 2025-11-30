@@ -18,4 +18,5 @@
     <string name="root_grant_all">Root: Grant All Permissions</string>
     <string name="overlay_color">Overlay Color</string>
     <string name="transparency">Transparency</string>
+    <string name="auto_start_on_boot">Auto Start on Boot (Root)</string>
 </resources>
