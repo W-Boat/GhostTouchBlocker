@@ -47,7 +47,6 @@
                         android:layout_marginBottom="12dp" />
 
                     <LinearLayout
-                        android:id="@+id/permOverlay"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
@@ -70,7 +69,6 @@
                     </LinearLayout>
 
                     <LinearLayout
-                        android:id="@+id/permAccessibility"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
@@ -93,7 +91,6 @@
                     </LinearLayout>
 
                     <LinearLayout
-                        android:id="@+id/permNotification"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
@@ -114,6 +111,52 @@
                             android:text="@string/grant"
                             style="@style/Widget.Material3.Button.TonalButton" />
                     </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRootGrant"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/root_grant_all"
+                        android:layout_marginTop="8dp"
+                        style="@style/Widget.Material3.Button.OutlinedButton" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/overlay_color"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:layout_marginBottom="12dp" />
+
+                    <View
+                        android:id="@+id/colorPreview"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/transparency"
+                        android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+                    <SeekBar
+                        android:id="@+id/seekAlpha"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

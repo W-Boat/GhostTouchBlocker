@@ -2,6 +2,7 @@ package com.wboat.ghosttouchblocker
 
 import android.app.*
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
@@ -13,7 +14,6 @@ class OverlayService : Service() {
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private var floatingButton: ImageView? = null
-    private var showFloatingButton = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -24,35 +24,33 @@ class OverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val action = intent?.action
-        when (action) {
+        when (intent?.action) {
             ACTION_START -> {
                 val left = intent.getIntExtra("left", 0)
                 val top = intent.getIntExtra("top", 0)
                 val right = intent.getIntExtra("right", 0)
                 val bottom = intent.getIntExtra("bottom", 0)
-                showFloatingButton = intent.getBooleanExtra("showFloatingButton", false)
-                startOverlay(left, top, right, bottom)
+                val color = intent.getIntExtra("color", 0x30FF0000)
+                val showFloating = intent.getBooleanExtra("showFloatingButton", false)
+                startOverlay(left, top, right, bottom, color, showFloating)
             }
             ACTION_STOP -> stopOverlay()
         }
         return START_STICKY
     }
 
-    private fun startOverlay(left: Int, top: Int, right: Int, bottom: Int) {
+    private fun startOverlay(left: Int, top: Int, right: Int, bottom: Int, color: Int, showFloating: Boolean) {
         if (overlayView != null) return
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         overlayView = View(this).apply {
-            setBackgroundColor(0x30FF0000)
+            setBackgroundColor(color)
             setOnTouchListener { _, _ -> true }
         }
 
         val params = WindowManager.LayoutParams(
             right - left,
             bottom - top,
-            left,
-            top,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
@@ -62,12 +60,14 @@ class OverlayService : Service() {
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {
+            x = left
+            y = top
             gravity = Gravity.TOP or Gravity.START
         }
 
         windowManager?.addView(overlayView, params)
 
-        if (showFloatingButton) {
+        if (showFloating) {
             showFloatingStopButton()
         }
     }
@@ -75,11 +75,9 @@ class OverlayService : Service() {
     private fun showFloatingStopButton() {
         floatingButton = ImageView(this).apply {
             setImageResource(android.R.drawable.ic_delete)
-            setBackgroundColor(0xCCFF0000.toInt())
-            setPadding(20, 20, 20, 20)
-            setOnClickListener {
-                stopOverlay()
-            }
+            setBackgroundColor(Color.parseColor("#CCFF0000"))
+            setPadding(30, 30, 30, 30)
+            setOnClickListener { stopOverlay() }
         }
 
         val params = WindowManager.LayoutParams(
@@ -89,8 +87,7 @@ class OverlayService : Service() {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
                 WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
@@ -120,7 +117,9 @@ class OverlayService : Service() {
                 CHANNEL_ID,
                 "Touch Blocker",
                 NotificationManager.IMPORTANCE_LOW
-            )
+            ).apply {
+                setShowBadge(false)
+            }
             getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
         }
     }
@@ -137,8 +136,9 @@ class OverlayService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.blocking_active))
-            .setSmallIcon(android.R.drawable.ic_lock_lock)
+            .setSmallIcon(R.drawable.ic_stat_notify)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
             .addAction(
                 android.R.drawable.ic_delete,
                 getString(R.string.stop_blocking),

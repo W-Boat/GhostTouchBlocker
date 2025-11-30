@@ -15,4 +15,7 @@
     <string name="enabled">Enabled</string>
     <string name="blocking_active">Touch blocking active</string>
     <string name="show_floating_button">Show Floating Stop Button</string>
+    <string name="root_grant_all">Root: Grant All Permissions</string>
+    <string name="overlay_color">Overlay Color</string>
+    <string name="transparency">Transparency</string>
 </resources>

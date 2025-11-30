@@ -5,15 +5,18 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
+import android.widget.SeekBar
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.wboat.ghosttouchblocker.databinding.ActivityMainBinding
+import java.io.DataOutputStream
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -22,6 +25,7 @@ class MainActivity : AppCompatActivity() {
     private var selectedTop = 0
     private var selectedRight = 0
     private var selectedBottom = 0
+    private var overlayColor = 0x30FF0000
 
     private val regionSelector = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -47,6 +51,7 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
 
         checkPermissions()
+        setupColorPicker()
 
         binding.btnOverlay.setOnClickListener {
             if (!Settings.canDrawOverlays(this)) {
@@ -65,6 +70,10 @@ class MainActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
+        }
+
+        binding.btnRootGrant.setOnClickListener {
+            grantPermissionsWithRoot()
         }
 
         binding.btnSelectRegion.setOnClickListener {
@@ -86,6 +95,50 @@ class MainActivity : AppCompatActivity() {
                 startBlocking()
             }
         }
+    }
+
+    private fun setupColorPicker() {
+        binding.seekAlpha.max = 255
+        binding.seekAlpha.progress = 48
+
+        val updateColor = {
+            val alpha = binding.seekAlpha.progress
+            overlayColor = Color.argb(alpha, 255, 0, 0)
+            binding.colorPreview.setBackgroundColor(overlayColor)
+        }
+
+        binding.seekAlpha.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                updateColor()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        updateColor()
+    }
+
+    private fun grantPermissionsWithRoot() {
+        Thread {
+            try {
+                val process = Runtime.getRuntime().exec("su")
+                val os = DataOutputStream(process.outputStream)
+                
+                os.writeBytes("pm grant $packageName android.permission.SYSTEM_ALERT_WINDOW\n")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    os.writeBytes("pm grant $packageName android.permission.POST_NOTIFICATIONS\n")
+                }
+                os.writeBytes("settings put secure enabled_accessibility_services ${packageName}/.BlockerAccessibilityService\n")
+                os.writeBytes("settings put secure accessibility_enabled 1\n")
+                os.writeBytes("exit\n")
+                os.flush()
+                process.waitFor()
+                
+                runOnUiThread { checkPermissions() }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }.start()
     }
 
     override fun onResume() {
@@ -124,28 +177,17 @@ class MainActivity : AppCompatActivity() {
     private fun startBlocking() {
         if (selectedRight == 0 || selectedBottom == 0) return
 
-        val useAccessibility = isAccessibilityServiceEnabled()
         val showFloatingButton = binding.switchFloatingButton.isChecked
-
-        if (useAccessibility) {
-            val intent = Intent(this, BlockerAccessibilityService::class.java).apply {
-                putExtra("left", selectedLeft)
-                putExtra("top", selectedTop)
-                putExtra("right", selectedRight)
-                putExtra("bottom", selectedBottom)
-            }
-            startService(intent)
-        } else if (Settings.canDrawOverlays(this)) {
-            val intent = Intent(this, OverlayService::class.java).apply {
-                action = OverlayService.ACTION_START
-                putExtra("left", selectedLeft)
-                putExtra("top", selectedTop)
-                putExtra("right", selectedRight)
-                putExtra("bottom", selectedBottom)
-                putExtra("showFloatingButton", showFloatingButton)
-            }
-            startForegroundService(intent)
+        val intent = Intent(this, OverlayService::class.java).apply {
+            action = OverlayService.ACTION_START
+            putExtra("left", selectedLeft)
+            putExtra("top", selectedTop)
+            putExtra("right", selectedRight)
+            putExtra("bottom", selectedBottom)
+            putExtra("color", overlayColor)
+            putExtra("showFloatingButton", showFloatingButton)
         }
+        startForegroundService(intent)
 
         isBlocking = true
         binding.btnToggle.text = getString(R.string.stop_blocking)
