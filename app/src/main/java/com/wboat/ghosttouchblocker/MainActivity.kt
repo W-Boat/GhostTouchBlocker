@@ -25,7 +25,7 @@ class MainActivity : AppCompatActivity() {
     private var selectedTop = 0
     private var selectedRight = 0
     private var selectedBottom = 0
-    private var overlayColor = 0x30FF0000
+    private var overlayColor = 0
 
     private val regionSelector = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
