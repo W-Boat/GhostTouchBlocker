@@ -97,139 +97,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
     private fun setupColorPicker() {
         binding.seekAlpha.max = 255
         binding.seekAlpha.progress = 48
 
         val updateColor = {
             val alpha = binding.seekAlpha.progress
-            overlayColor = Color.argb(alpha, 255, 0, 0)
-            binding.colorPreview.setBackgroundColor(overlayColor)
-        }
-
-        binding.seekAlpha.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                updateColor()
-            }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
-
-        updateColor()
-    }
-
-    private fun grantPermissionsWithRoot() {
-        Thread {
-            try {
-                val process = Runtime.getRuntime().exec("su")
-                val os = DataOutputStream(process.outputStream)
-                
-                os.writeBytes("pm grant $packageName android.permission.SYSTEM_ALERT_WINDOW\n")
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    os.writeBytes("pm grant $packageName android.permission.POST_NOTIFICATIONS\n")
-                }
-                os.writeBytes("settings put secure enabled_accessibility_services ${packageName}/.BlockerAccessibilityService\n")
-                os.writeBytes("settings put secure accessibility_enabled 1\n")
-                os.writeBytes("exit\n")
-                os.flush()
-                process.waitFor()
-                
-                runOnUiThread { checkPermissions() }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }.start()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        checkPermissions()
-    }
-
-    private fun checkPermissions() {
-        val overlayGranted = Settings.canDrawOverlays(this)
-        val accessibilityGranted = isAccessibilityServiceEnabled()
-        val notificationGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        } else true
-
-        binding.btnOverlay.text = if (overlayGranted) getString(R.string.enabled) else getString(R.string.grant)
-        binding.btnAccessibility.text = if (accessibilityGranted) getString(R.string.enabled) else getString(R.string.grant)
-        binding.btnNotification.text = if (notificationGranted) getString(R.string.enabled) else getString(R.string.grant)
-
-        binding.btnOverlay.isEnabled = !overlayGranted
-        binding.btnAccessibility.isEnabled = !accessibilityGranted
-        binding.btnNotification.isEnabled = !notificationGranted
-    }
-
-    private fun isAccessibilityServiceEnabled(): Boolean {
-        val am = getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
-        val enabledServices = am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-        return enabledServices.any {
-            it.resolveInfo.serviceInfo.packageName == packageName &&
-                    it.resolveInfo.serviceInfo.name == BlockerAccessibilityService::class.java.name
-        }
-    }
-
-    private fun startBlocking() {
-        if (selectedRight == 0 || selectedBottom == 0) return
-
-        val showFloatingButton = binding.switchFloatingButton.isChecked
-        val intent = Intent(this, OverlayService::class.java).apply {
-            action = OverlayService.ACTION_START
-            putExtra("left", selectedLeft)
-            putExtra("top", selectedTop)
-            putExtra("right", selectedRight)
-            putExtra("bottom", selectedBottom)
-            putExtra("color", overlayColor)
-            putExtra("showFloatingButton", showFloatingButton)
-        }
-        startForegroundService(intent)
-
-        isBlocking = true
-        binding.btnToggle.text = getString(R.string.stop_blocking)
-    }
-
-    private fun stopBlocking() {
-        val intent = Intent(this, OverlayService::class.java).apply {
-            action = OverlayService.ACTION_STOP
-        }
-        startService(intent)
-
-        isBlocking = false
-        binding.btnToggle.text = getString(R.string.start_blocking)
-    }
-}
-
-        binding.switchAutoStart.isChecked = getSharedPreferences("settings", Context.MODE_PRIVATE)
-            .getBoolean("auto_start", false)
-
-        binding.switchAutoStart.setOnCheckedChangeListener { _, isChecked ->
-            getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean("auto_start", isChecked)
-                .apply()
-        }
-
-        binding.btnToggle.setOnClickListener {
-            if (isBlocking) {
-                stopBlocking()
+            val monetColor = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                getColor(android.R.color.system_accent1_500)
             } else {
-                startBlocking()
+                Color.parseColor("#9575CD")
             }
-        }
-    }
-
-    private fun setupColorPicker() {
-        binding.seekAlpha.max = 255
-        binding.seekAlpha.progress = 48
-
-        val updateColor = {
-            val alpha = binding.seekAlpha.progress
-            overlayColor = Color.argb(alpha, 255, 0, 0)
+            overlayColor = Color.argb(alpha, Color.red(monetColor), Color.green(monetColor), Color.blue(monetColor))
             binding.colorPreview.setBackgroundColor(overlayColor)
         }
 
