@@ -36,6 +36,7 @@ class MainActivity : AppCompatActivity() {
                 selectedTop = it.getIntExtra("top", 0)
                 selectedRight = it.getIntExtra("right", 0)
                 selectedBottom = it.getIntExtra("bottom", 0)
+                saveSettings()
             }
         }
     }
@@ -50,6 +51,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
 
+        loadSettings()
         checkPermissions()
         setupColorPicker()
 
@@ -86,6 +88,7 @@ class MainActivity : AppCompatActivity() {
             selectedTop = 0
             selectedRight = metrics.widthPixels
             selectedBottom = metrics.heightPixels
+            saveSettings()
         }
 
         binding.btnToggle.setOnClickListener {
@@ -150,6 +153,25 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         checkPermissions()
+    }
+
+    private fun loadSettings() {
+        val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+        selectedLeft = prefs.getInt("selected_left", 0)
+        selectedTop = prefs.getInt("selected_top", 0)
+        selectedRight = prefs.getInt("selected_right", 0)
+        selectedBottom = prefs.getInt("selected_bottom", 0)
+    }
+
+    private fun saveSettings() {
+        val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+        prefs.edit().apply {
+            putInt("selected_left", selectedLeft)
+            putInt("selected_top", selectedTop)
+            putInt("selected_right", selectedRight)
+            putInt("selected_bottom", selectedBottom)
+            apply()
+        }
     }
 
     private fun checkPermissions() {

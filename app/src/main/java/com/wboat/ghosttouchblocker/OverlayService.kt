@@ -1,6 +1,7 @@
 package com.wboat.ghosttouchblocker
 
 import android.app.*
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -14,6 +15,13 @@ class OverlayService : Service() {
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private var floatingButton: ImageView? = null
+    private var overlayParams: WindowManager.LayoutParams? = null
+    private var currentLeft = 0
+    private var currentTop = 0
+    private var currentRight = 0
+    private var currentBottom = 0
+    private var currentColor = 0
+    private var showFloatingButton = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -26,17 +34,34 @@ class OverlayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
-                val left = intent.getIntExtra("left", 0)
-                val top = intent.getIntExtra("top", 0)
-                val right = intent.getIntExtra("right", 0)
-                val bottom = intent.getIntExtra("bottom", 0)
-                val color = intent.getIntExtra("color", 0x30FF0000)
-                val showFloating = intent.getBooleanExtra("showFloatingButton", false)
-                startOverlay(left, top, right, bottom, color, showFloating)
+                currentLeft = intent?.getIntExtra("left", 0) ?: 0
+                currentTop = intent?.getIntExtra("top", 0) ?: 0
+                currentRight = intent?.getIntExtra("right", 0) ?: 0
+                currentBottom = intent?.getIntExtra("bottom", 0) ?: 0
+                currentColor = intent?.getIntExtra("color", 0x30FF0000) ?: 0x30FF0000
+                showFloatingButton = intent?.getBooleanExtra("showFloatingButton", false) ?: false
+                startOverlay(currentLeft, currentTop, currentRight, currentBottom, currentColor, showFloatingButton)
             }
             ACTION_STOP -> stopOverlay()
         }
         return START_STICKY
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (overlayView != null) {
+            updateOverlayPosition()
+        }
+    }
+
+    private fun updateOverlayPosition() {
+        overlayParams?.let {
+            it.width = currentRight - currentLeft
+            it.height = currentBottom - currentTop
+            it.x = currentLeft
+            it.y = currentTop
+            windowManager?.updateViewLayout(overlayView, it)
+        }
     }
 
     private fun startOverlay(left: Int, top: Int, right: Int, bottom: Int, color: Int, showFloating: Boolean) {
@@ -48,7 +73,7 @@ class OverlayService : Service() {
             setOnTouchListener { _, _ -> true }
         }
 
-        val params = WindowManager.LayoutParams(
+        overlayParams = WindowManager.LayoutParams(
             right - left,
             bottom - top,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -66,7 +91,7 @@ class OverlayService : Service() {
             gravity = Gravity.TOP or Gravity.START
         }
 
-        windowManager?.addView(overlayView, params)
+        windowManager?.addView(overlayView, overlayParams)
 
         if (showFloating) {
             showFloatingStopButton()
@@ -100,16 +125,25 @@ class OverlayService : Service() {
     }
 
     private fun stopOverlay() {
-        overlayView?.let {
-            windowManager?.removeView(it)
-            overlayView = null
-        }
-        floatingButton?.let {
-            windowManager?.removeView(it)
-            floatingButton = null
+        try {
+            overlayView?.let {
+                windowManager?.removeView(it)
+                overlayView = null
+            }
+            floatingButton?.let {
+                windowManager?.removeView(it)
+                floatingButton = null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    override fun onDestroy() {
+        stopOverlay()
+        super.onDestroy()
     }
 
     private fun createNotificationChannel() {
@@ -134,6 +168,20 @@ class OverlayService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val startIntent = Intent(this, OverlayService::class.java).apply {
+            action = ACTION_START
+            putExtra("left", currentLeft)
+            putExtra("top", currentTop)
+            putExtra("right", currentRight)
+            putExtra("bottom", currentBottom)
+            putExtra("color", currentColor)
+            putExtra("showFloatingButton", showFloatingButton)
+        }
+        val startPendingIntent = PendingIntent.getService(
+            this, 1, startIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.blocking_active))
@@ -144,6 +192,11 @@ class OverlayService : Service() {
                 android.R.drawable.ic_delete,
                 getString(R.string.stop_blocking),
                 stopPendingIntent
+            )
+            .addAction(
+                android.R.drawable.ic_input_add,
+                getString(R.string.start_blocking),
+                startPendingIntent
             )
             .build()
     }
